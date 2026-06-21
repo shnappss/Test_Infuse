@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Course Catalog Ranking Prototype</title>
+<style>
+  :root{
+    --bg:#FAFBFC; --surface:#FFFFFF; --ink:#1B2230; --muted:#5A6472; --faint:#8A93A2;
+    --line:#E7E9EE; --line-strong:#D7DBE2; --accent:#2F5BD7; --accent-soft:#EAF0FC;
+    --star:#D9A123; --good:#2E9E6B; --bar-track:#EDEFF3;
+    --radius:10px;
+    --font:-apple-system,system-ui,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;}
+  body{
+    font-family:var(--font); color:var(--ink); background:var(--bg);
+    -webkit-font-smoothing:antialiased; font-size:15px; line-height:1.45;
+  }
+  .wrap{max-width:880px; margin:0 auto; padding:0 20px 64px;}
+
+  header.top{
+    position:sticky; top:0; z-index:5; background:rgba(250,251,252,.92);
+    backdrop-filter:saturate(140%) blur(6px); border-bottom:1px solid var(--line);
+  }
+  .top-inner{max-width:880px; margin:0 auto; padding:18px 20px 16px; display:flex;
+    align-items:baseline; justify-content:space-between; gap:16px; flex-wrap:wrap;}
+  h1{font-size:19px; font-weight:650; letter-spacing:-.01em; margin:0;}
+  .sub{color:var(--muted); font-size:13px; margin-top:2px;}
+  .params-toggle{
+    font-size:12.5px; color:var(--accent); background:none; border:1px solid var(--line-strong);
+    border-radius:7px; padding:6px 10px; cursor:pointer; font-family:inherit;
+  }
+  .params-toggle:hover{background:var(--accent-soft);}
+
+  .params{
+    display:none; max-width:880px; margin:0 auto; padding:0 20px;
+  }
+  .params.show{display:block;}
+  .params-card{
+    background:var(--surface); border:1px solid var(--line); border-radius:var(--radius);
+    padding:14px 16px; margin-top:14px; font-size:13px; color:var(--muted);
+  }
+  .params-card b{color:var(--ink); font-weight:600;}
+  .weights{display:flex; flex-wrap:wrap; gap:6px 14px; margin-top:8px;}
+  .weights span{white-space:nowrap;}
+
+  .controls{
+    display:flex; gap:10px; flex-wrap:wrap; padding:16px 0 6px;
+  }
+  .field{display:flex; flex-direction:column; gap:4px;}
+  .field label{font-size:11px; text-transform:uppercase; letter-spacing:.05em; color:var(--faint); font-weight:600;}
+  select{
+    font-family:inherit; font-size:14px; color:var(--ink); background:var(--surface);
+    border:1px solid var(--line-strong); border-radius:8px; padding:8px 30px 8px 11px;
+    appearance:none; cursor:pointer; min-width:150px;
+    background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'><path d='M3 4.5L6 7.5L9 4.5' stroke='%235A6472' stroke-width='1.4' fill='none' stroke-linecap='round' stroke-linejoin='round'/></svg>");
+    background-repeat:no-repeat; background-position:right 10px center;
+  }
+  select:focus-visible{outline:2px solid var(--accent); outline-offset:1px; border-color:var(--accent);}
+
+  .meta-row{display:flex; justify-content:space-between; align-items:center;
+    padding:6px 2px 10px; font-size:13px; color:var(--muted);}
+  .scope-note{color:var(--faint); font-style:italic;}
+  .clear-btn{
+    font-family:inherit; font-size:14px; color:var(--ink); background:var(--surface);
+    border:1px solid var(--line-strong); border-radius:8px; padding:8px 14px; cursor:pointer;
+    white-space:nowrap;
+  }
+  .clear-btn:hover{background:#F4F6F9; border-color:var(--muted);}
+  .clear-btn:focus-visible{outline:2px solid var(--accent); outline-offset:1px;}
+
+  ol.list{list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:10px;}
+  .card{
+    background:var(--surface); border:1px solid var(--line); border-radius:var(--radius);
+    padding:14px 16px; display:grid; grid-template-columns:30px 1fr auto; gap:0 14px;
+    transition:border-color .15s ease, box-shadow .15s ease;
+  }
+  .card:hover{border-color:var(--line-strong); box-shadow:0 1px 3px rgba(20,30,50,.05);}
+  .rank{font-size:18px; font-weight:600; color:var(--faint); font-variant-numeric:tabular-nums; padding-top:1px;}
+  .body{min-width:0;}
+  .title{font-size:15.5px; font-weight:600; letter-spacing:-.005em; margin:0 0 1px;}
+  .inst{font-size:13px; color:var(--muted); margin-bottom:8px;}
+  .chips{display:flex; flex-wrap:wrap; gap:6px;}
+  .chip{font-size:12px; color:var(--muted); background:#F4F6F9; border:1px solid var(--line);
+    border-radius:6px; padding:2px 8px; white-space:nowrap;}
+  .chip.stale{color:#9A5B22; background:#FBF1E6; border-color:#F0DFC9;}
+
+  .metrics{text-align:right; display:flex; flex-direction:column; gap:3px; min-width:128px;}
+  .rating{font-size:14px; font-weight:600; font-variant-numeric:tabular-nums; display:flex; gap:5px; justify-content:flex-end; align-items:center;}
+  .stars{color:var(--star); letter-spacing:1px; font-size:13px;}
+  .rating .cnt{color:var(--faint); font-weight:400; font-size:12.5px;}
+  .msmall{font-size:12.5px; color:var(--muted); font-variant-numeric:tabular-nums;}
+  .msmall b{color:var(--ink); font-weight:600;}
+
+  .scorebar{grid-column:2 / 4; margin-top:11px;}
+  .scorebar-head{display:flex; justify-content:space-between; align-items:center; font-size:12px; color:var(--muted); margin-bottom:5px;}
+  .scorebar-head .val{font-variant-numeric:tabular-nums; color:var(--ink); font-weight:600;}
+  .why{font-size:12px; color:var(--accent); background:none; border:none; cursor:pointer; font-family:inherit; padding:0;}
+  .why:hover{text-decoration:underline;}
+  .track{height:6px; background:var(--bar-track); border-radius:4px; overflow:hidden;}
+  .fill{height:100%; background:var(--accent); border-radius:4px; transition:width .35s cubic-bezier(.2,.7,.3,1);}
+
+  .breakdown{grid-column:2 / 4; margin-top:12px; padding-top:12px; border-top:1px dashed var(--line-strong); display:none;}
+  .breakdown.show{display:block;}
+  .bd-row{display:grid; grid-template-columns:96px 1fr 56px; align-items:center; gap:10px; margin-bottom:7px; font-size:12.5px;}
+  .bd-row:last-child{margin-bottom:0;}
+  .bd-label{color:var(--muted);}
+  .bd-track{height:5px; background:var(--bar-track); border-radius:3px; overflow:hidden;}
+  .bd-fill{height:100%; background:#A9BCEB; border-radius:3px;}
+  .bd-fill.q{background:var(--accent);}
+  .bd-val{text-align:right; color:var(--ink); font-variant-numeric:tabular-nums;}
+  .bd-note{font-size:12px; color:var(--faint); margin-top:9px;}
+
+  .empty{text-align:center; color:var(--muted); padding:48px 0; font-size:14px;}
+
+  @media (max-width:560px){
+    .card{grid-template-columns:26px 1fr;}
+    .metrics{grid-column:1 / 3; text-align:left; align-items:flex-start; margin-top:10px;}
+    .rating{justify-content:flex-start;}
+    .scorebar,.breakdown{grid-column:1 / 3;}
+  }
+  @media (prefers-reduced-motion:reduce){ *{transition:none !important;} }
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="top-inner">
+    <div>
+      <h1>Course Catalog</h1>
+      <div class="sub">Ranked by quality, engagement, and recency. Sorting and filtering update the list live.</div>
+    </div>
+  </div>
+</header>
+
+<div class="wrap">
+  <div class="controls">
+    <div class="field">
+      <label for="category">Category</label>
+      <select id="category"></select>
+    </div>
+    <div class="field">
+      <label for="sort">Sort by</label>
+      <select id="sort">
+        <option value="recommended">Recommended</option>
+        <option value="rating">Highest rated</option>
+        <option value="popular">Most popular</option>
+        <option value="newest">Newest</option>
+        <option value="trending">Trending</option>
+      </select>
+    </div>
+    <div class="field">
+      <label for="minRating">Min rating</label>
+      <select id="minRating">
+        <option value="0">All ratings</option>
+        <option value="4">4.0 and up</option>
+        <option value="4.5">4.5 and up</option>
+      </select>
+    </div>
+    <div class="field">
+      <label for="level">Level</label>
+      <select id="level">
+        <option value="all">All levels</option>
+        <option value="Beginner">Beginner</option>
+        <option value="Intermediate">Intermediate</option>
+        <option value="Advanced">Advanced</option>
+      </select>
+    </div>
+    <div class="field">
+      <label>&nbsp;</label>
+      <button id="clearBtn" class="clear-btn" type="button">Clear filters</button>
+    </div>
+  </div>
+
+  <div class="meta-row">
+    <span id="count"></span>
+    <span class="scope-note" id="scopeNote"></span>
+  </div>
+
+  <ol class="list" id="list"></ol>
+</div>
+
+<script>
+const W = { quality:0.45, engagement:0.20, freshness:0.15, demand:0.10, relevance:0.10 };
+const M = 50;            // confidence prior
+const K = 0.04;          // freshness decay per month
+
+const COURSES = [
+  // Marketing (engineered to show every sort behaving differently)
+  {id:1, title:"Demand Generation Foundations", inst:"Lena Ostrowski", cat:"Marketing", level:"Intermediate", hrs:9, lang:"English", R:4.7, v:9200, enr:22000, comp:0.71, upd:2, e30:1400, e30p:1300},
+  {id:2, title:"Advanced Marketing Analytics", inst:"Priya Raman", cat:"Marketing", level:"Advanced", hrs:14, lang:"English", R:4.8, v:1850, enr:12000, comp:0.64, upd:28, e30:300, e30p:340},
+  {id:3, title:"Intro to B2B Lead Nurturing", inst:"Marco Bianchi", cat:"Marketing", level:"Beginner", hrs:6, lang:"English", R:4.2, v:16500, enr:41000, comp:0.52, upd:5, e30:1800, e30p:1700},
+  {id:4, title:"AI-Assisted Content Strategy", inst:"Devon Clarke", cat:"Marketing", level:"Intermediate", hrs:7, lang:"English", R:4.9, v:18, enr:600, comp:0.80, upd:1, e30:480, e30p:60},
+  {id:5, title:"Email Marketing Essentials", inst:"Sara Nguyen", cat:"Marketing", level:"Beginner", hrs:5, lang:"English", R:4.5, v:5400, enr:19000, comp:0.69, upd:9, e30:700, e30p:720},
+  {id:6, title:"Marketing Funnel Metrics", inst:"Tom Becker", cat:"Marketing", level:"Intermediate", hrs:8, lang:"English", R:4.0, v:3200, enr:8000, comp:0.40, upd:14, e30:250, e30p:300},
+
+  // Data & Analytics
+  {id:7, title:"SQL for Data Analysis", inst:"Hannah Weiss", cat:"Data & Analytics", level:"Beginner", hrs:10, lang:"English", R:4.7, v:21000, enr:58000, comp:0.66, upd:4, e30:2100, e30p:1950},
+  {id:8, title:"Practical Statistics with Python", inst:"Jorge Alvarez", cat:"Data & Analytics", level:"Intermediate", hrs:16, lang:"English", R:4.6, v:7800, enr:24000, comp:0.58, upd:7, e30:900, e30p:880},
+  {id:9, title:"Data Visualization Crash Course", inst:"Mei Lin", cat:"Data & Analytics", level:"Beginner", hrs:5, lang:"English", R:4.4, v:4100, enr:15000, comp:0.61, upd:11, e30:520, e30p:540},
+  {id:10, title:"Building ML Pipelines", inst:"Ben Carter", cat:"Data & Analytics", level:"Advanced", hrs:20, lang:"English", R:4.8, v:920, enr:5200, comp:0.49, upd:3, e30:610, e30p:300},
+
+  // Software Engineering
+  {id:11, title:"Modern JavaScript from Scratch", inst:"Aisha Khan", cat:"Software Engineering", level:"Beginner", hrs:12, lang:"English", R:4.6, v:33000, enr:90000, comp:0.55, upd:6, e30:2600, e30p:2500},
+  {id:12, title:"System Design Interview Prep", inst:"Daniel Cho", cat:"Software Engineering", level:"Advanced", hrs:18, lang:"English", R:4.9, v:6400, enr:21000, comp:0.62, upd:2, e30:1500, e30p:1100},
+  {id:13, title:"Docker and Kubernetes Basics", inst:"Olu Adeyemi", cat:"Software Engineering", level:"Intermediate", hrs:11, lang:"English", R:4.3, v:9100, enr:27000, comp:0.47, upd:13, e30:600, e30p:700},
+
+  // Design
+  {id:14, title:"UX Research Fundamentals", inst:"Clara Dupont", cat:"Design", level:"Beginner", hrs:7, lang:"English", R:4.7, v:5600, enr:17000, comp:0.72, upd:5, e30:740, e30p:690},
+  {id:15, title:"Design Systems in Figma", inst:"Niko Virtanen", cat:"Design", level:"Intermediate", hrs:9, lang:"English", R:4.8, v:2100, enr:9000, comp:0.66, upd:3, e30:520, e30p:410},
+
+  // Business
+  {id:16, title:"Product Management Essentials", inst:"Renee Walsh", cat:"Business", level:"Beginner", hrs:8, lang:"English", R:4.6, v:14000, enr:39000, comp:0.63, upd:4, e30:1300, e30p:1250},
+  {id:17, title:"Negotiation for Managers", inst:"Idris Bello", cat:"Business", level:"Intermediate", hrs:6, lang:"English", R:4.5, v:6200, enr:18000, comp:0.59, upd:10, e30:560, e30p:590},
+];
+
+// ---- helpers ----
+const fmtK = n => n>=1000 ? (n/1000).toFixed(n>=10000?0:1).replace(/\.0$/,'')+"k" : ""+n;
+const fmtComma = n => n.toLocaleString("en-US");
+const stars = r => { const f=Math.round(r); return "★".repeat(f)+"☆".repeat(5-f); };
+const bayes = (R,v,C) => (v/(v+M))*R + (M/(v+M))*C;
+const fresh = upd => Math.exp(-K*upd);
+const norm = (x,min,max) => max>min ? (x-min)/(max-min) : 1;
+
+// ---- state + elements ----
+const el = id => document.getElementById(id);
+const catSel = el("category"), sortSel = el("sort"), minSel = el("minRating"), lvlSel = el("level");
+const listEl = el("list"), countEl = el("count"), scopeEl = el("scopeNote");
+
+const allOpt=document.createElement("option");
+allOpt.value="all"; allOpt.textContent="All categories"; catSel.appendChild(allOpt);
+[...new Set(COURSES.map(c=>c.cat))].sort().forEach(cat=>{
+  const o=document.createElement("option"); o.value=cat; o.textContent=cat; catSel.appendChild(o);
+});
+catSel.value = "Marketing";
+
+el("clearBtn").addEventListener("click", ()=>{
+  catSel.value="all"; sortSel.value="recommended"; minSel.value="0"; lvlSel.value="all";
+  render();
+});
+[catSel,sortSel,minSel,lvlSel].forEach(s=>s.addEventListener("change", render));
+
+function compute(){
+  const cat = catSel.value;
+  const inCat = cat==="all" ? COURSES.slice() : COURSES.filter(c=>c.cat===cat);
+  const C = inCat.reduce((s,c)=>s+c.R,0)/inCat.length;   // mean rating across the current scope
+
+  let rows = inCat
+    .filter(c=>c.R>=parseFloat(minSel.value))
+    .filter(c=>lvlSel.value==="all"||c.level===lvlSel.value)
+    .map(c=>({
+      ...c, C,
+      wr: bayes(c.R,c.v,C),
+      fr: fresh(c.upd),
+      dem: Math.log1p(c.enr),
+      vel: c.e30 / Math.max(c.e30p,1),
+    }));
+
+  if(rows.length){
+    const ext = (key)=>({min:Math.min(...rows.map(r=>r[key])), max:Math.max(...rows.map(r=>r[key]))});
+    const eWR=ext("wr"), eFr=ext("fr"), eDem=ext("dem"), eComp=ext("comp");
+    rows.forEach(r=>{
+      r.qN = norm(r.wr,eWR.min,eWR.max);
+      r.eN = norm(r.comp,eComp.min,eComp.max);
+      r.fN = norm(r.fr,eFr.min,eFr.max);
+      r.dN = norm(r.dem,eDem.min,eDem.max);
+      r.rN = 1; // browse: relevance constant
+      r.score = W.quality*r.qN + W.engagement*r.eN + W.freshness*r.fN + W.demand*r.dN + W.relevance*r.rN;
+      r.parts = [
+        {k:"Quality", w:W.quality, n:r.qN, q:true},
+        {k:"Engagement", w:W.engagement, n:r.eN},
+        {k:"Freshness", w:W.freshness, n:r.fN},
+        {k:"Demand", w:W.demand, n:r.dN},
+        {k:"Relevance", w:W.relevance, n:r.rN},
+      ];
+    });
+  }
+
+  const cmp = {
+    recommended:(a,b)=>b.score-a.score,
+    rating:(a,b)=>b.wr-a.wr,
+    popular:(a,b)=>b.enr-a.enr,
+    newest:(a,b)=>a.upd-b.upd,
+    trending:(a,b)=>b.vel-a.vel,
+  }[sortSel.value];
+  rows.sort((a,b)=> cmp(a,b) || (b.wr-a.wr) || (b.v-a.v) || (a.upd-b.upd) || (a.id-b.id));
+  return rows;
+}
+
+function render(){
+  const rows = compute();
+  scopeEl.textContent = catSel.value==="all"
+    ? "Showing all categories. Cross-category scores are approximate."
+    : "";
+  countEl.textContent = rows.length===1 ? "1 course" : rows.length+" courses";
+  listEl.innerHTML = "";
+
+  if(!rows.length){
+    const li=document.createElement("li");
+    li.className="empty";
+    li.textContent="No courses match these filters. Try lowering the minimum rating or clearing the level filter.";
+    listEl.appendChild(li);
+    return;
+  }
+
+  rows.forEach((r,i)=>{
+    const staleChip = r.upd>=24 ? `<span class="chip stale">Updated ${r.upd} mo ago</span>`
+                                : `<span class="chip">Updated ${r.upd} mo ago</span>`;
+    const bd = r.parts.map(p=>`
+      <div class="bd-row">
+        <span class="bd-label">${p.k}</span>
+        <span class="bd-track"><span class="bd-fill ${p.q?'q':''}" style="width:${(p.n*100).toFixed(0)}%"></span></span>
+        <span class="bd-val">${(p.w*p.n).toFixed(3)}</span>
+      </div>`).join("");
+
+    const li=document.createElement("li");
+    li.className="card";
+    li.innerHTML=`
+      <div class="rank">${i+1}</div>
+      <div class="body">
+        <p class="title">${r.title}</p>
+        <div class="inst">${r.inst}</div>
+        <div class="chips">
+          <span class="chip">${r.level}</span>
+          <span class="chip">${r.hrs} h</span>
+          <span class="chip">${r.lang}</span>
+          ${staleChip}
+        </div>
+      </div>
+      <div class="metrics">
+        <div class="rating"><span class="stars" aria-hidden="true">${stars(r.R)}</span>${r.R.toFixed(1)} <span class="cnt">(${fmtComma(r.v)})</span></div>
+        <div class="msmall"><b>${(r.comp*100).toFixed(0)}%</b> complete</div>
+        <div class="msmall"><b>${fmtK(r.enr)}</b> enrolled</div>
+      </div>
+      <div class="scorebar">
+        <div class="scorebar-head">
+          <span>Ranking score</span>
+          <span><span class="val">${r.score.toFixed(2)}</span> &nbsp; <button class="why" aria-expanded="false">Why here</button></span>
+        </div>
+        <div class="track"><div class="fill" style="width:${(r.score*100).toFixed(0)}%"></div></div>
+      </div>
+      <div class="breakdown">
+        ${bd}
+        <div class="bd-note">Weighted rating ${r.wr.toFixed(2)} from ${fmtComma(r.v)} ratings, against a category mean of ${r.C.toFixed(2)} and a prior of ${M}. Components are scaled within this list, then weighted.</div>
+      </div>`;
+    listEl.appendChild(li);
+
+    const btn=li.querySelector(".why"), panel=li.querySelector(".breakdown");
+    btn.addEventListener("click",()=>{
+      const open=panel.classList.toggle("show");
+      btn.setAttribute("aria-expanded",open);
+      btn.textContent=open?"Hide":"Why here";
+    });
+  });
+}
+
+render();
+</script>
+</body>
+</html>
